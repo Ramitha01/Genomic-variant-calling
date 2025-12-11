@@ -7,21 +7,60 @@ unzip gatk-4.4.0.0.zip
 #Navigate to the GATK directory:
 cd gatk-4.4.0.0
 
-(a) Index the Reference FASTA File
-samtools faidx /mnt/c/Users/lenov/Downloads/genomics_obesity/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+(a)Variant Calling 
+Add Read Groups (GATK):
+gatk AddOrReplaceReadGroups \
+  -I alignment/sample.sorted.bam \
+  -O alignment/sample.RG.bam \
+  -RGID sample \
+  -RGLB LIB1 \
+  -RGPL ILLUMINA \
+  -RGPU UNIT1 \
+  -RGSM sample
 
-(b) Create a Sequence Dictionary
-./gatk CreateSequenceDictionary -R /mnt/c/Users/lenov/Downloads/genomics_obesity/Homo_sapiens.GR
+(b)Mark Duplicates:
+gatk MarkDuplicates \
+  -I alignment/sample.RG.bam \
+  -O alignment/sample.dedup.bam \
+  -M alignment/sample.metrics.txt
 
-(c)Index the New BAM File
-samtools index /mnt/c/Users/lenov/Downloads/genomics_obesity/SRR5936734_sorted_rg.bam
+(c)Index BAM:
+samtools index alignment/sample.dedup.bam
 
-(d)Run GATK 
-./gatk HaplotypeCaller \
-   -R /mnt/c/Users/lenov/Downloads/genomics_obesity/Homo_sapiens.GRCh38.dna.primary_assembly.fa \
-   -I /mnt/c/Users/lenov/Downloads/genomics_obesity/SRR5936734_sorted_rg.bam \
-   -O /mnt/c/Users/lenov/Downloads/genomics_obesity/SRR5936734_variants.vcf \
-   -ERC GVCF \
-   --sample-name SRR5936734
+(d)Base Quality Score Recalibration (BQSR):
+Create recalibration table:
+gatk BaseRecalibrator \
+  -I alignment/sample.dedup.bam \
+  -R hg38.fa \
+  --known-sites dbsnp_146.hg38.vcf.gz \
+  --known-sites Mills_and_1000G_gold_standard.indels.hg38.vcf.gz \
+  -O alignment/sample.recal.table
 
-#output:SRR5936734_variants.vcf
+(e)Apply BQSR:
+gatk ApplyBQSR \
+  -R hg38.fa \
+  -I alignment/sample.dedup.bam \
+  --bqsr-recal-file alignment/sample.recal.table \
+  -O alignment/sample.BQSR.bam
+
+(f)Variant Calling (GATK HaplotypeCaller):
+gatk HaplotypeCaller \
+  -R hg38.fa \
+  -I alignment/sample.BQSR.bam \
+  -O variants/sample.raw.vcf.gz
+
+#output:sample_raw.vcf.gz
+
+Variant Filtering (Hard filters):
+gatk VariantFiltration \
+  -R hg38.fa \
+  -V variants/sample.raw.vcf.gz \
+  --filter-name "QD_filter" --filter-expression "QD < 2.0" \
+  --filter-name "FS_filter" --filter-expression "FS > 60.0" \
+  --filter-name "MQ_filter" --filter-expression "MQ < 40.0" \
+  -O variants/sample.filtered.vcf.gz
+
+#output:sample.filtered.vcf.gz
+
+
+
