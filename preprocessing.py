@@ -3,21 +3,19 @@
 source ~/.bashrc
 
 # Create the working environment for genomics obesity analysis
-conda create -n genomics_obesity
-conda activate genomics_obesity
+conda create -n genomics_pipeline
+conda activate genomics_pipeline
 
-# Change the directory where the FASTQ files are stored
-cd C:\Users\lenov\Downloads\genomics_obesity\data
+# Create project directory
+mkdir -p genomics_pipeline/{raw,trimmed,fastqc,alignment,variants,annovar}
 
 ##FASTQC
-# Create a directory to save the FastQC results
-mkdir -p /mnt/c/Users/lenov/Downloads/genomics_obesity/fastqc_results
-
 # Run FastQC to check the quality of the raw data
 fastqc -o /path/to/output /path/to/input.fastq
 
 ##TRIMMING
-trimmomatic SE -threads 4 input.fastq output_trimmed.fastq
+trim_galore --paired raw/input_1.fastq.gz raw/input_2.fastq.gz \
+  --output_dir trimmed/
 
 #Download the reference genome
 wget ftp://ftp.ensembl.org/pub/release-106/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
